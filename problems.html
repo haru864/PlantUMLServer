@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>HTML Sample</title>
+    <style>
+        .container {
+            display: flex;
+            align-items: center;
+        }
+
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            margin-left: 10px;
+        }
+
+        .container>div,
+        .buttons>button {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div id="editor-container" name="md_src" style="width:800px;height:600px;border:1px solid grey"></div>
+        <div class="buttons">
+            <button type="button" id="display-btn">Display HTML</button>
+            <button type="button" id="download-btn">Download HTML</button>
+        </div>
+        <div id="preview"></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.20.0/min/vs/loader.min.js"></script>
+    <script>
+        require.config({
+            paths: {
+                'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.20.0/min/vs'
+            }
+        });
+        require(['vs/editor/editor.main'], function () {
+            window.editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: '',
+                language: 'markdown'
+            });
+        });
+        document.getElementById('display-btn').addEventListener('click', async function () {
+            await sendForm('display');
+        });
+
+        document.getElementById('download-btn').addEventListener('click', async function () {
+            await sendForm('download');
+        });
+        async function sendForm(action) {
+            try {
+                var value = window.editor.getValue()
+                var details = {
+                    'action': action,
+                    'md_src': value,
+                };
+                var formBody = [];
+                for (var property in details) {
+                    var encodedKey = encodeURIComponent(property);
+                    var encodedValue = encodeURIComponent(details[property]);
+                    formBody.push(encodedKey + "=" + encodedValue);
+                }
+                formBody = formBody.join("&");
+                const response = await fetch('http://localhost:8081', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: formBody
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log(data);
+                document.getElementById('preview').value = data;
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>
