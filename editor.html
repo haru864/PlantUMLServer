@@ -30,6 +30,7 @@
             <img id="image" src="" alt="サーバーからの画像">
         </div>
     </div>
+    <button type="button" id="debugBtn">デバッグ用PNG生成</button>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.20.0/min/vs/loader.min.js"></script>
     <script>
         require.config({
@@ -42,12 +43,17 @@
                 value: '',
                 language: 'markdown'
             });
-            window.editor.onDidChangeModelContent(async function () {
-                var plantUmlText = editor.getValue();
-                var pngContent = await generateFigure();
-                // document.getElementById('preview').innerHTML = htmlContent;
-            });
+            // window.editor.onDidChangeModelContent(async function () {
+            //     var plantUmlText = editor.getValue();
+            //     var pngContent = await generateFigure();
+            //     document.getElementById('preview').innerHTML = htmlContent;
+            // });
         });
+        document.getElementById("debugBtn").addEventListener("click", async function () {
+            var plantUmlText = editor.getValue();
+            var b64EncodedPNG = await generateFigure();
+            document.getElementById('image').src = b64EncodedPNG;
+        })
         async function generateFigure() {
             try {
                 var details = { 'uml': window.editor.getValue() };
@@ -68,9 +74,10 @@
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                const data = await response.json();
+                console.log(response);
+                const data = await response.text();
                 console.log(data);
-                return data["png"];
+                return data;
             } catch (error) {
                 console.error('Error:', error);
             }

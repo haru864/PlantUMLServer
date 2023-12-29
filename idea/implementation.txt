@@ -12,6 +12,6 @@
 
 
 # コマンド
-java -jar ../lib/plantuml-1.2023.13.jar sample.uml
+java -jar lib/plantuml-1.2023.13.jar -o ../tmp sample/sample.uml
 
 
