@@ -1,7 +1,29 @@
 <?php
 
-function convertUmlToPNG(string $uml): string
+$FILE_FORMAT_TEXT = "txt";
+$FILE_FORMAT_PNG = "png";
+$FILE_FORMAT_SVG = "svg";
+
+$contentTypeMapping = array(
+    $FILE_FORMAT_TEXT => "text/plain",
+    $FILE_FORMAT_PNG => "image/png",
+    $FILE_FORMAT_SVG => "image/svg+xml"
+);
+$fileExtensionMapping = array(
+    $FILE_FORMAT_TEXT => ".utxt",
+    $FILE_FORMAT_PNG => ".png",
+    $FILE_FORMAT_SVG => ".svg"
+);
+
+function generateImageFile(string $uml, string $format): string
 {
+    global $contentTypeMapping;
+    global $fileExtensionMapping;
+
+    if (!array_key_exists($format, $contentTypeMapping)) {
+        throw new Exception("Invalid file format");
+    }
+
     $tempDir = __DIR__ . '/tmp';
     if (!file_exists($tempDir)) {
         mkdir($tempDir, 0777, true);
@@ -13,27 +35,26 @@ function convertUmlToPNG(string $uml): string
     fclose($handle);
 
     $jarDirPath = __DIR__ . "/lib/plantuml-1.2023.13.jar ";
-    $pngDirPath = __DIR__ . "/tmp";
-    $cmd = "java -jar " . $jarDirPath . " -o " . $pngDirPath . " " . $umlFile;
-    $res = shell_exec($cmd);
-    // file_put_contents('test/debug.txt', $cmd . PHP_EOL . $res);
+    $outDirPath = __DIR__ . "/tmp";
+    $cmd = "java -jar " . $jarDirPath . " -o " . $outDirPath . " " . $umlFile;
+    if ($format === "txt") {
+        $cmd .= " -tutxt";
+    } else if ($format === "svg") {
+        $cmd .= " -tsvg";
+    }
+    shell_exec($cmd);
 
-    $pngFile = $umlFile . ".png";
-    $type = pathinfo($pngFile, PATHINFO_EXTENSION);
-    $data = file_get_contents($pngFile);
-    $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
-
+    $outFile = $umlFile . $fileExtensionMapping[$format];
     unlink($umlFile);
-    unlink($pngFile);
 
-    return $base64;
+    return $outFile;
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'GET') {
     // file_put_contents('test/get_param.txt', var_export($_GET, true));
-    if ($_GET["action"] == "edit") {
+    if ($_GET["action"] === "edit") {
         $html = file_get_contents('editor.html');
-    } else if ($_GET["action"] == "learn") {
+    } else if ($_GET["action"] === "learn") {
         $html = file_get_contents('problems.html');
     } else {
         $html = file_get_contents('index.html');
@@ -42,15 +63,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
 } else if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // file_put_contents('test/post_param.txt', var_export($_POST, true));
     $uml = $_POST["uml"];
-    $b64EncodedPNG = convertUmlToPNG($uml);
-    // file_put_contents('response_param.txt', var_export($htmlSrc, true));
-    // if ($_POST["action"] === 'download') {
-    //     header("Content-Type: text/plain");
-    //     header('Content-Disposition: attachment; filename="example.txt"');
-    //     echo $htmlSrc;
-    //     return;
-    // }
-    echo $b64EncodedPNG;
+    if ($_POST["action"] === "display") {
+        $pngFilePath = generateImageFile($uml, "png");
+        $data = file_get_contents($pngFilePath);
+        $type = pathinfo($pngFilePath, PATHINFO_EXTENSION);
+        $b64EncodedPNG = 'data:image/' . $type . ';base64,' . base64_encode($data);
+        unlink($pngFilePath);
+        echo $b64EncodedPNG;
+    } else if ($_POST["action"] === "download") {
+        $format = $_POST["format"];
+        $contentType = $contentTypeMapping[$format];
+        header("Content-Type: " . $contentType);
+        header('Content-Disposition: attachment; filename="download_file"' . $format);
+        $outFilePath = generateImageFile($uml, $format);
+        readfile($outFilePath);
+        unlink($outFilePath);
+    } else {
+        echo "Server Error: Invalid Request Parameter";
+    }
 } else {
     echo "Server Error: Invalid Request Method";
 }

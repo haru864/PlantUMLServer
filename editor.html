@@ -27,10 +27,15 @@
     <div class="container">
         <div id="editor-container" style="width:800px;height:600px;border:1px solid grey"></div>
         <div id="preview" style="width:800px;height:600px;border:1px solid grey">
-            <img id="image" src="" alt="サーバーからの画像">
+            <div>
+                ダウンロード
+                <button id="download-png-btn">PNG</button>
+                <button id="download-svg-btn">SVG</button>
+                <button id="download-txt-btn">TEXT</button>
+            </div>
+            <img id="image" src="" alt=" ">
         </div>
     </div>
-    <button type="button" id="debugBtn">デバッグ用PNG生成</button>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.20.0/min/vs/loader.min.js"></script>
     <script>
         require.config({
@@ -43,24 +48,45 @@
                 value: '',
                 language: 'markdown'
             });
-            // window.editor.onDidChangeModelContent(async function () {
-            //     var plantUmlText = editor.getValue();
-            //     var pngContent = await generateFigure();
-            //     document.getElementById('preview').innerHTML = htmlContent;
-            // });
+            window.editor.onDidChangeModelContent(displayFigure);
         });
-        document.getElementById("debugBtn").addEventListener("click", async function () {
-            var plantUmlText = editor.getValue();
-            var b64EncodedPNG = await generateFigure();
-            document.getElementById('image').src = b64EncodedPNG;
-        })
-        async function generateFigure() {
+        document.getElementById("download-png-btn").addEventListener("click", async function () { downloadFile("png") });
+        document.getElementById("download-svg-btn").addEventListener("click", async function () { downloadFile("svg") });
+        document.getElementById("download-txt-btn").addEventListener("click", async function () { downloadFile("txt") });
+        async function displayFigure() {
             try {
-                var details = { 'uml': window.editor.getValue() };
+                let plantUmlText = window.editor.getValue();
+                let param = { 'action': 'display', 'uml': plantUmlText };
+                let response = await executeApi(param);
+                let b64EncodedPNG = await response.text();
+                document.getElementById('image').src = b64EncodedPNG;
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        async function downloadFile(fileType) {
+            if (fileType !== "txt" && fileType !== "png" && fileType !== "svg") {
+                return;
+            }
+            let plantUmlText = window.editor.getValue();
+            let param = { 'action': 'download', 'format': fileType, 'uml': plantUmlText };
+            let response = await executeApi(param);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `plantUML.${fileType}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+        async function executeApi(paramMapping) {
+            try {
                 var formBody = [];
-                for (var property in details) {
+                for (var property in paramMapping) {
                     var encodedKey = encodeURIComponent(property);
-                    var encodedValue = encodeURIComponent(details[property]);
+                    var encodedValue = encodeURIComponent(paramMapping[property]);
                     formBody.push(encodedKey + "=" + encodedValue);
                 }
                 formBody = formBody.join("&");
@@ -75,46 +101,11 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 console.log(response);
-                const data = await response.text();
-                console.log(data);
-                return data;
+                return response;
             } catch (error) {
                 console.error('Error:', error);
             }
         }
-        // document.getElementById("download-btn").addEventListener("click", async function () {
-        //     try {
-        //         var details = { 'action': 'download', 'md_src': window.editor.getValue() };
-        //         var formBody = [];
-        //         for (var property in details) {
-        //             var encodedKey = encodeURIComponent(property);
-        //             var encodedValue = encodeURIComponent(details[property]);
-        //             formBody.push(encodedKey + "=" + encodedValue);
-        //         }
-        //         formBody = formBody.join("&");
-        //         const response = await fetch('http://localhost:8081', {
-        //             method: 'POST',
-        //             headers: {
-        //                 'Content-Type': 'application/x-www-form-urlencoded'
-        //             },
-        //             body: formBody
-        //         });
-        //         if (!response.ok) {
-        //             throw new Error(`HTTP error! status: ${response.status}`);
-        //         }
-        //         const blob = await response.blob();
-        //         const url = window.URL.createObjectURL(blob);
-        //         const a = document.createElement('a');
-        //         a.style.display = 'none';
-        //         a.href = url;
-        //         a.download = 'MarkdownToHTML.html';
-        //         document.body.appendChild(a);
-        //         a.click();
-        //         window.URL.revokeObjectURL(url);
-        //     } catch (error) {
-        //         console.error('Error:', error);
-        //     }
-        // });
     </script>
 </body>
 
