@@ -25,12 +25,13 @@
 
 <body>
     <div class="container">
-        <div id="editor-container" name="md_src" style="width:800px;height:600px;border:1px solid grey"></div>
-        <div class="buttons">
-            <button type="button" id="display-btn">Display HTML</button>
-            <button type="button" id="download-btn">Download HTML</button>
+        <div id="editor" name="md_src" style="width:800px;height:600px;border:1px solid grey"></div>
+        <div id="preview" name="md_src" style="width:800px;height:600px;border:1px solid grey">
+            <img id="editor-image" src="" alt=" ">
         </div>
-        <div id="preview"></div>
+        <div id="answer" name="md_src" style="width:800px;height:600px;border:1px solid grey">
+            <img id="answer-image" src="<?php echo htmlspecialchars($b64EncodedAnswerPNG); ?>" alt=" ">
+        </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.20.0/min/vs/loader.min.js"></script>
     <script>
@@ -39,30 +40,33 @@
                 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.20.0/min/vs'
             }
         });
-        require(['vs/editor/editor.main'], function () {
-            window.editor = monaco.editor.create(document.getElementById('editor-container'), {
+        require(['vs/editor/editor.main'], function() {
+            window.editor = monaco.editor.create(document.getElementById('editor'), {
                 value: '',
                 language: 'markdown'
             });
+            window.editor.onDidChangeModelContent(displayFigure);
         });
-        document.getElementById('display-btn').addEventListener('click', async function () {
-            await sendForm('display');
-        });
-
-        document.getElementById('download-btn').addEventListener('click', async function () {
-            await sendForm('download');
-        });
-        async function sendForm(action) {
+        async function displayFigure() {
             try {
-                var value = window.editor.getValue()
-                var details = {
-                    'action': action,
-                    'md_src': value,
+                let plantUmlText = window.editor.getValue();
+                let param = {
+                    'action': 'display',
+                    'uml': plantUmlText
                 };
+                let response = await executeApi(param);
+                let b64EncodedPNG = await response.text();
+                document.getElementById('editor-image').src = b64EncodedPNG;
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        async function executeApi(paramMapping) {
+            try {
                 var formBody = [];
-                for (var property in details) {
+                for (var property in paramMapping) {
                     var encodedKey = encodeURIComponent(property);
-                    var encodedValue = encodeURIComponent(details[property]);
+                    var encodedValue = encodeURIComponent(paramMapping[property]);
                     formBody.push(encodedKey + "=" + encodedValue);
                 }
                 formBody = formBody.join("&");
@@ -76,9 +80,8 @@
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                const data = await response.json();
-                console.log(data);
-                document.getElementById('preview').value = data;
+                console.log(response);
+                return response;
             } catch (error) {
                 console.error('Error:', error);
             }

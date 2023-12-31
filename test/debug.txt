@@ -1,1 +1,1 @@
-java -jar /home/haru/project/PlantUMLServer/lib/plantuml-1.2023.13.jar  -o /home/haru/project/PlantUMLServer/tmp /home/haru/project/PlantUMLServer/tmp/uml_wyOqCL
+hogehoge

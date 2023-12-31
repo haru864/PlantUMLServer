@@ -50,16 +50,51 @@ function generateImageFile(string $uml, string $format): string
     return $outFile;
 }
 
+function getAnswerUmlByProblemID(string $id): string
+{
+    $json_data = file_get_contents(__DIR__ . '/problems/problems.json');
+    $problems = json_decode($json_data, true);
+    $uml = '';
+    foreach ($problems as $problem) {
+        if ($problem['id'] == $id) {
+            $uml = $problem['uml'];
+            break;
+        }
+    }
+    if ($uml == '') {
+        throw new Exception("Invalid problem-ID");
+    }
+    return $uml;
+}
+
+register_shutdown_function(function () {
+    $tmpDir = __DIR__ . '/tmp/';
+    $files = glob($tmpDir . '*');
+    foreach ($files as $file) {
+        if (is_file($file)) {
+            unlink($file);
+        }
+    }
+});
+
 if ($_SERVER['REQUEST_METHOD'] == 'GET') {
     // file_put_contents('test/get_param.txt', var_export($_GET, true));
     if ($_GET["action"] === "edit") {
-        $html = file_get_contents('editor.html');
-    } else if ($_GET["action"] === "learn") {
-        $html = file_get_contents('problems.html');
+        echo file_get_contents('editor.html');
+    } else if ($_GET["action"] === "problems") {
+        include('problems.php');
+    } else if ($_GET["action"] === "solve") {
+        $id = $_GET["id"];
+        $ansUml = getAnswerUmlByProblemID($id);
+        $answerImageFilePath = generateImageFile($ansUml, "png");
+        $data = file_get_contents($answerImageFilePath);
+        $type = pathinfo($answerImageFilePath, PATHINFO_EXTENSION);
+        $b64EncodedAnswerPNG = 'data:image/' . $type . ';base64,' . base64_encode($data);
+        unlink($answerImageFilePath);
+        include('solve.php');
     } else {
-        $html = file_get_contents('index.html');
+        echo file_get_contents('index.html');
     }
-    echo $html;
 } else if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // file_put_contents('test/post_param.txt', var_export($_POST, true));
     $uml = $_POST["uml"];
